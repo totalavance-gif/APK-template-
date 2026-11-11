@@ -1,0 +1,10 @@
+# Gradle
+.gradle/
+build/
+# Config local (ruta del SDK, claves): no se versiona
+local.properties
+# Android Studio
+.idea/
+*.iml
+# OS
+.DS_Store
