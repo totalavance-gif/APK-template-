@@ -9,6 +9,8 @@ que compila el APK de debug en cada push a `main`.
 2. Entra al último run verde de **Build APK**.
 3. Descarga el artifact **app-debug** (contiene `app-debug.apk`).
 
+Si un build falla, el workflow abre un issue automáticamente con el extracto del log.
+
 ## Usar la plantilla
 
 - Marca el repo como template (Settings → Template repository) o clónalo.

@@ -7,6 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: write
+  issues: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,7 +28,20 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
+
+      - name: Report failure log
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo 'Build APK failed, see tail of the log:'
+            echo '```'
+            tail -c 50000 build.log
+            echo '```'
+          } > failure-report.md
+          gh issue create --title "CI failure: Build APK" --body-file failure-report.md
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
