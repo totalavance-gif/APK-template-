@@ -1,0 +1,71 @@
+# Workflow: construye YouTube + 2 parches. Copiar a .github/workflows/build.yml
+name: build-parches
+
+on:
+  workflow_dispatch:
+    inputs:
+      bundle_url:
+        description: 'URL directa del bundle stock 21.47.483-BETA (1561317017)'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Descargar apktool
+        run: |
+          URL=$(curl -s https://api.github.com/iBotPeaches/Apktool/releases/latest \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); print([a['browser_download_url'] for a in d['assets'] if a['name'].endswith('.jar')][0])")
+          curl -sL -o apktool.jar "$URL"
+          java -jar apktool.jar --version
+
+      - name: Descargar bundle y extraer base
+        run: |
+          curl -sL -o stock.apkm "${{ inputs.bundle_url }}"
+          mkdir splits && cd splits
+          unzip -o ../stock.apkm 'split_config.*.apk' -x 'split_config.*dpi.apk' 'split_config.armeabi_v7a.apk'
+          unzip -o ../stock.apkm base.apk
+          ls -la
+
+      - name: Decodificar base
+        run: java -jar apktool.jar d splits/base.apk -o decoded -f
+
+      - name: Aplicar enganches smali
+        run: python3 kit/aplicar.py smali decoded kit
+
+      - name: Reconstruir base
+        run: java -jar apktool.jar b decoded -o base-patched-unsigned.apk
+
+      - name: Inyectar extension
+        run: python3 kit/aplicar.py dex base-patched-unsigned.apk kit
+
+      - name: Clave, alinear y firmar todo
+        run: |
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)"
+          keytool -genkeypair -keystore debug.keystore -alias debug -keyalg RSA \
+            -keysize 2048 -validity 10950 -storepass android -keypass android \
+            -dname "CN=debug" -noprompt
+          mkdir -p out
+          "$BUILD_TOOLS/zipalign" -f 4 base-patched-unsigned.apk out/base.apk
+          cp splits/split_config.*.apk out/
+          for a in out/*.apk; do
+            "$BUILD_TOOLS/apksigner" sign --ks debug.keystore --ks-pass:android \
+              --key-pass:android "$a"
+            "$BUILD_TOOLS/apksigner" verify "$a"
+          done
+          ls -la out/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: youtube-parcheada
+          path: out/
