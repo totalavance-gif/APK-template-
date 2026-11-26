@@ -5,8 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       bundle_url:
-        description: 'URL directa del bundle stock 21.47.483-BETA (1561317017)'
-        required: true
+        description: 'URL directa del bundle (vacio = usa stock/stock.apkm del repo)'
+        required: false
+        default: ''
         type: string
 
 jobs:
@@ -14,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - uses: actions/setup-java@v4
         with:
@@ -29,9 +32,13 @@ jobs:
           curl -sL -o apktool.jar "$URL"
           java -jar apktool.jar --version
 
-      - name: Descargar bundle y extraer base
+      - name: Conseguir bundle y extraer base
         run: |
-          curl -sL -o stock.apkm "${{ inputs.bundle_url }}"
+          if [ -n "${{ inputs.bundle_url }}" ]; then
+            curl -sL -o stock.apkm "${{ inputs.bundle_url }}"
+          else
+            cp stock/stock.apkm stock.apkm
+          fi
           mkdir splits && cd splits
           unzip -o ../stock.apkm 'split_config.*.apk' -x 'split_config.*dpi.apk' 'split_config.armeabi_v7a.apk'
           unzip -o ../stock.apkm base.apk
