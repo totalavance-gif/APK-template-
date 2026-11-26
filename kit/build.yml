@@ -66,8 +66,8 @@ jobs:
           "$BUILD_TOOLS/zipalign" -f 4 base-patched-unsigned.apk out/base.apk
           cp splits/split_config.*.apk out/
           for a in out/*.apk; do
-            "$BUILD_TOOLS/apksigner" sign --ks debug.keystore --ks-pass:android \
-              --key-pass:android "$a"
+            "$BUILD_TOOLS/apksigner" sign --ks debug.keystore --ks-pass pass:android \
+              --key-pass pass:android "$a"
             "$BUILD_TOOLS/apksigner" verify "$a"
           done
           ls -la out/
